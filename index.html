@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>ロッカー</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+</head>
+
+<body class="bg-light">
+    <div id="auth" class="d-block">
+        <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+            <div class="text-center">
+                <h3 class="m-4" style="font-size: 4rem; white-space: nowrap;">INIADアカウント</h3>
+                <div class="form-group m-2">
+                    <input type="text" class="form-control" id="userId" placeholder="s1f10XXXXXX"
+                        style="font-size: 3em;" autocomplete="username">
+                </div>
+                <div class="form-group m-2">
+                    <input type="password" class="form-control" id="password" placeholder="password"
+                        style="font-size: 3em;" autocomplete="current-password">
+                </div>
+                <button class="btn btn-secondary btn-lg m-3" style="font-size: 2em;" onclick="getUser()">ログイン</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="con" class="d-none">
+
+
+        <div class="container d-flex justify-content-center align-items-center"
+            style="min-height: 100vh; display: block;">
+            <div class="text-center">
+                <h1 class="fw-bold m-4" style="font-size: 6rem; white-space: nowrap;">ロッカーの場所</h1>
+                <h3 id="locker" style="font-size: 4rem; white-space: nowrap;">
+                    <div class="spinner-border" role="status">
+                    </div>
+                </h3>
+                <div id="bt">
+                </div>
+            </div>
+        </div>
+
+
+
+
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-fullscreen">
+                <div class="modal-content bg-light">
+                    <div class="modal-body text-center d-flex justify-content-center align-items-center flex-column">
+                        <h2 class="fw-bold m-4" style="font-size: 3rem; white-space: nowrap;">本当に開けますか？</h2>
+                        <div class="my-3">
+                            <button type="button" class="btn btn-danger m-4" data-bs-dismiss="modal"
+                                onclick="lockeropen()" style="font-size: 3rem; margin-top: 1rem;">OPEN</button>
+                            <button type="button" class="btn btn-secondary m-4" data-bs-dismiss="modal"
+                                style="font-size: 3rem; margin-top: 1rem;">BACK</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"
+        integrity="sha384-fbbOQedDUMZZ5KreZpsbe1LCZPVmfTnH7ois6mU1QK+m14rQ1l2bGBq41eYeM/fS" crossorigin="anonymous">
+    </script>
+    <script>
+        let userid
+        let userpw
+        const baseurl = "https://edu-iot.iniad.org/api/v1"
+
+        function getUser() {
+            userid = document.getElementById("userId").value;
+            userpw = document.getElementById("password").value;
+            if (userId === "" && password === "") {
+                alert("ユーザーIDとパスワードを入力してください");
+            }
+            else if (userId === "") {
+                alert("ユーザーIDを入力してください");
+            } else if (userpw === "") {
+                alert("パスワードを入力してください");
+            } else {
+                const auth = document.getElementById("auth");
+                auth.classList.remove("d-block");
+                auth.classList.add("d-none");
+                const con = document.getElementById("con");
+                con.classList.remove("d-none");
+                con.classList.add("d-block");
+
+                callLockerPositionAPI("GET");
+            }
+        }
+
+
+        function makeBasicAuth() {
+            let token = userid + ':' + userpw;
+            let hash = btoa(token);
+            return "Basic " + hash;
+        }
+
+        const locker = document.getElementById("locker");
+
+        async function callLockerPositionAPI(method) {
+            try {
+                const response = await fetch(baseurl + "/locker", {
+                    method: method,
+                    headers: {
+                        'Authorization': makeBasicAuth(userid, userpw)
+                    }
+                });
+                if (response.status === 200) {
+                    const data = await response.json();
+                    locker.innerHTML = `${data.name[0]}階<br>${data.name[1]}ストリート<br>
+                        ${data.name.slice(2, 4)}列目の上から${data.name.slice(4, 6)}段目`;
+                    var button = document.createElement("button");
+                    button.setAttribute("type", "button");
+                    button.setAttribute("class", "btn btn-secondary btn-lg m-5");
+                    button.setAttribute("style", "font-size: 4rem;");
+                    button.setAttribute("data-bs-toggle", "modal");
+                    button.setAttribute("data-bs-target", "#exampleModal");
+                    button.textContent = "OPEN";
+                    var container = document.getElementById("bt");
+                    container.appendChild(button);
+                } else if (response.status === 503) {
+                    // エラーレスポンスの処理
+                    locker.textContent = "INIAD Wi-Fiに接続してください";
+                } else if (response.status === 401) {
+                    // エラーレスポンスの処理
+                    locker.textContent = "IDかパスワードが違います";
+                } else {
+                    // エラーレスポンスの処理
+                    locker.textContent = "データを取得できませんでした";
+                }
+            } catch (error) {
+                // 通信エラーなどの例外処理
+                console.error("エラーが発生しました:", error);
+                locker.textContent = "エラーが発生しました";
+            }
+        }
+
+        async function lockeropen() {
+            try {
+                const response = await fetch(baseurl + '/locker/open', {
+                    method: "POST",
+                    headers: {
+                        'Authorization': makeBasicAuth(userid, userpw)
+                    }
+                });
+                console.log(response);
+
+                if (response.status === 200) {
+                    alert("ロッカーが正常に開かれました");
+                }
+            } catch (error) {
+                alert("エラー");
+            }
+        }
+    </script>
+</body>
+
+</html>
